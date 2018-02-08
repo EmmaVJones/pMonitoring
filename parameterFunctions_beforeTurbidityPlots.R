@@ -556,82 +556,9 @@ noGageDataTweet <- function(gageResults,i,last2Hours){
     write.csv(gageResults,paste('notifications/',uniqueTweetIdentifier,'.csv',sep=""),row.names = F)}
 }
 
-# turbidity data manipulation and Plots
-dataManipulationForTurbTweets_2hr <- function(upstreamData,downstreamData,turbidity99th1,turbidity99th2){
-  if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(upstreamData))){
-    UP <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,'Turb_Inst')%>%rename(upstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
-    # If gage height data available at gage then grab that, too
-    if("GH_Inst" %in% names(upstreamData)){
-      if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
-        gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
-          mutate(site_noGH='02054500')%>% dplyr::select(agency_cd,site_noGH,everything(),-site_no)
-      }else{
-        gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
-          rename(site_noGH=!!names(.[2]))}
-      
-    }else{gh <- dplyr::select(upstreamData,agency_cd,dateTime)%>%
-      mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}
-  }else{UP <- select(upstreamData,agency_cd,site_no,dateTime)%>%mutate(upstream=NA)}
-  if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(downstreamData))){
-    DOWN <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,'Turb_Inst')%>%rename(downstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
-    # If gage height data available at gage then grab that, too
-    if("GH_Inst" %in% names(downstreamData)){
-      gh <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,GH_Inst) %>%
-        rename(site_noGH=!!names(.[2]))
-    }else{
-      if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
-        gh <- gh}
-      if(exists('gh')){gh <- gh}else{
-        gh <- dplyr::select(downstreamData,agency_cd,dateTime)%>%
-          mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}}
-    
-  }else{DOWN <- select(downstreamData,agency_cd,site_no,dateTime)%>%mutate(downstream=NA)}
-  
-  together <- full_join(UP,DOWN,by=c('agency_cd','dateTime'))%>%
-    full_join(gh,by=c('agency_cd','dateTime')) %>%
-    mutate(turbidity99th1=turbidity99th1,turbidity99th2=turbidity99th2)
-  return(together)
-}
-
-
-dataManipulationForTurbTweets_2days <- function(upstreamData,downstreamData,turbidity99th1,turbidity99th2){
-  if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(upstreamData))){
-    UP <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,'Turb_Inst')%>%rename(upstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
-    # If gage height data available at gage then grab that, too
-    if("GH_Inst" %in% names(upstreamData)){
-      if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
-        gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
-          mutate(site_noGH='02054500')%>% dplyr::select(agency_cd,site_noGH,everything(),-site_no)
-      }else{
-        gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
-          rename(site_noGH=!!names(.[2]))}
-      
-    }else{gh <- dplyr::select(upstreamData,agency_cd,dateTime)%>%
-      mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}
-  }else{UP <- select(upstreamData,agency_cd,site_no,dateTime)%>%mutate(upstream=NA)}
-  if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(downstreamData))){
-    DOWN <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,'Turb_Inst')%>%rename(downstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
-    # If gage height data available at gage then grab that, too
-    if("GH_Inst" %in% names(downstreamData)){
-      gh <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,GH_Inst) %>%
-        rename(site_noGH=!!names(.[2]))
-    }else{
-      if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
-        gh <- gh}
-      if(exists('gh')){gh <- gh}else{
-        gh <- dplyr::select(downstreamData,agency_cd,dateTime)%>%
-          mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}}
-    
-  }else{DOWN <- select(downstreamData,agency_cd,site_no,dateTime)%>%mutate(downstream=NA)}
-  
-  
-  together <- full_join(UP,DOWN,by=c('agency_cd','dateTime'))%>%
-    full_join(gh,by=c('agency_cd','dateTime')) %>%
-    mutate(turbidity99th1=turbidity99th1,turbidity99th2=turbidity99th2)
-  return(together)
-}
-
-pairedTurbidityPlot_2days <- function(turbidityData,turbidity99th1,turbidity99th2){
+# turbidity Plots
+pairedTurbidityPlot <- function(turbidityData){
+  #Figure out which gage the GH data comes from
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] ==
      unique(turbidityData$site_no.x)[!is.na(unique(turbidityData$site_no.x))]){updown <- "Upstream"}
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] ==
@@ -639,44 +566,17 @@ pairedTurbidityPlot_2days <- function(turbidityData,turbidity99th1,turbidity99th
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] == "02054500"){
     updown <- 'Lafayette'}
   
-  up <- dplyr::select(turbidityData,dateTime,upstream)%>%
-    gather(gage,measure,upstream)%>%mutate(Turbidity99=turbidity99th1,panel=2)#'Upstream Turbidity (NTU)')
-  down <- dplyr::select(turbidityData,dateTime,downstream)%>%
-    gather(gage,measure,downstream)%>%mutate(Turbidity99=turbidity99th2,panel=3)#'Downstream Turbidity (NTU)')
-  gh <- dplyr::select(turbidityData,dateTime,GH_Inst)%>%
-    rename(measure=GH_Inst)%>% mutate(gage=updown,Turbidity99=NA,panel=1)%>% select(dateTime,gage,Turbidity99,measure,panel)#paste(updown,'Gage Height (ft)',sep=' ')) 
-  dat <- rbind(up,down,gh)
-  dat2 <- dplyr::filter(dat,dateTime >= last2Hours & panel==2) %>%
-    mutate(a=min(dateTime),b=max(dateTime),c=min(measure,na.rm=T),
-           d=max(max(measure,na.rm=T),max(Turbidity99)))
-  dat3 <- dplyr::filter(dat,dateTime >= last2Hours & panel==3) %>%
-    mutate(a=min(dateTime),b=max(dateTime),c=min(measure,na.rm=T),
-           d=max(max(measure,na.rm=T),max(Turbidity99)))
-  correctName <- c(`1`=paste(updown,'Gage Height (ft)',sep=' '),
-                   `2`='Upstream Turbidity (NTU)',`3`='Downstream Turbidity (NTU)')
-  
-  
-  plot3_alldata2hr <- ggplot(dat,mapping = aes(x=dateTime,y=measure))+
-    facet_grid(panel~.,scale='free',labeller = as_labeller(correctName))+
-    geom_rect(data=dat2,aes(xmin=a,xmax=b,ymin=c,ymax=d,fill=TRUE),
-              alpha=0.2)+
-    geom_rect(data=dat3,aes(xmin=a,xmax=b,ymin=c,ymax=d,fill=TRUE),
-              alpha=0.2)+
-    
-    geom_point(data=up,stat = 'identity',colour='coral')+
-    geom_line(data=up,aes(dateTime,Turbidity99),colour='red')+
-    
-    geom_point(data=down,stat = 'identity',colour='blueviolet')+
-    geom_line(data=down,aes(dateTime,Turbidity99),colour='blue')+
-    geom_point(data=gh,stat = 'identity',colour='gray') +
-    
-    
-    scale_fill_manual(values='gray')+guides(fill=F)
-  return(plot3_alldata2hr)
+  ggplot(turbidityData,aes(x = dateTime)) + 
+    geom_point(aes(y=upstream, colour='Upstream Gage'))  + 
+    geom_point(data=turbidityData, aes(dateTime,downstream,colour='Downstream Gage')) +
+    geom_line(data=turbidityData, aes(dateTime,GH_Inst,colour=paste(updown,' Gage Height',sep="")),linetype=2) +
+    scale_y_continuous(sec.axis = sec_axis(trans=~.+0,name = 'Gage Height (ft)')) +
+    scale_color_manual(values=c('blue','red','gray'))+
+    labs(y="Turbidity (NTU)",x="Date",colour='Parameter')
 }
 
-
-upstreamTurbidityPlot2day <- function(turbidityData,turbidity99th1){
+upstreamTurbidityPlot <- function(turbidityData,turbidity99th1){
+  #Figure out which gage the GH data comes from
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] ==
      unique(turbidityData$site_no.x)[!is.na(unique(turbidityData$site_no.x))]){updown <- "Upstream"}
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] ==
@@ -684,30 +584,17 @@ upstreamTurbidityPlot2day <- function(turbidityData,turbidity99th1){
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] == "02054500"){
     updown <- 'Lafayette'}
   
-  up <- dplyr::select(turbidityData,dateTime,upstream)%>%
-    gather(gage,measure,upstream)%>%mutate(Turbidity99=turbidity99th1,panel=2)#'Upstream Turbidity (NTU)')
-  gh <- dplyr::select(turbidityData,dateTime,GH_Inst)%>%
-    rename(measure=GH_Inst)%>% mutate(gage=updown,Turbidity99=NA,panel=1)%>% select(dateTime,gage,Turbidity99,measure,panel)#paste(updown,'Gage Height (ft)',sep=' ')) 
-  dat <- rbind(up,gh)
-  dat2 <- dplyr::filter(dat,dateTime >= last2Hours & panel==2) %>%
-    mutate(a=min(dateTime),b=max(dateTime),c=min(measure,na.rm=T),
-           d=max(max(measure,na.rm=T),max(Turbidity99)))
-  correctName <- c(`1`=paste(updown,'Gage Height (ft)',sep=' '),
-                   `2`='Upstream Turbidity (NTU)')
-  
-  upstream2dayplot <- ggplot(dat,mapping = aes(x=dateTime,y=measure))+
-    facet_grid(panel~.,scale='free',labeller = as_labeller(correctName))+
-    geom_rect(data=dat2,aes(xmin=a,xmax=b,ymin=c,ymax=d,fill=TRUE),
-              alpha=0.2)+
-    geom_point(data=up,stat = 'identity',colour='coral')+
-    geom_line(data=up,aes(dateTime,Turbidity99),colour='red')+
-    geom_point(data=gh,stat = 'identity',colour='gray') +
-    scale_fill_manual(values='gray')+guides(fill=F)
-  return(upstream2dayplot)
+  ggplot(turbidityData,aes(x = dateTime)) + 
+    geom_point(aes(y=upstream, colour='Upstream Gage'))  + 
+    geom_line(data=turbidityData,aes(dateTime,turbidity99th1,colour='turbidity99th')) +
+    geom_line(data=turbidityData, aes(dateTime,GH_Inst,colour=paste(updown,' Gage Height',sep="")),linetype=2) +
+    scale_y_continuous(sec.axis = sec_axis(trans=~.+0,name = 'Gage Height (ft)')) +
+    scale_color_manual(values=c('gray','red','blue'))+
+    labs(y="Turbidity (NTU)",x="Date",colour='Parameter')
 }
 
-
-downstreamTurbidityPlot2day <- function(turbidityData,turbidity99th2){
+downstreamTurbidityPlot <- function(turbidityData,turbidity99th2){
+  #Figure out which gage the GH data comes from
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] ==
      unique(turbidityData$site_no.x)[!is.na(unique(turbidityData$site_no.x))]){updown <- "Upstream"}
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] ==
@@ -715,31 +602,17 @@ downstreamTurbidityPlot2day <- function(turbidityData,turbidity99th2){
   if(unique(turbidityData$site_noGH)[!is.na(unique(turbidityData$site_noGH))] == "02054500"){
     updown <- 'Lafayette'}
   
-  down <- dplyr::select(turbidityData,dateTime,downstream)%>%
-    gather(gage,measure,downstream)%>%mutate(Turbidity99=turbidity99th2,panel=3)#'Downstream Turbidity (NTU)')
-  gh <- dplyr::select(turbidityData,dateTime,GH_Inst)%>%
-    rename(measure=GH_Inst)%>% mutate(gage=updown,Turbidity99=NA,panel=1)%>% select(dateTime,gage,Turbidity99,measure,panel)#paste(updown,'Gage Height (ft)',sep=' ')) 
-  dat <- rbind(down,gh)
-  dat3 <- dplyr::filter(dat,dateTime >= last2Hours & panel==3) %>%
-    mutate(a=min(dateTime),b=max(dateTime),c=min(measure,na.rm=T),
-           d=max(max(measure,na.rm=T),max(Turbidity99)))
-  correctName <- c(`1`=paste(updown,'Gage Height (ft)',sep=' '),`3`='Downstream Turbidity (NTU)')
-  
-  
-  downstream2dayplot <- ggplot(dat,mapping = aes(x=dateTime,y=measure))+
-    facet_grid(panel~.,scale='free',labeller = as_labeller(correctName))+
-    geom_rect(data=dat3,aes(xmin=a,xmax=b,ymin=c,ymax=d,fill=TRUE),
-              alpha=0.2)+
-    geom_point(data=down,stat = 'identity',colour='blueviolet')+
-    geom_line(data=down,aes(dateTime,Turbidity99),colour='blue')+
-    geom_point(data=gh,stat = 'identity',colour='gray') +
-    scale_fill_manual(values='gray')+guides(fill=F)
-  return(downstream2dayplot)
+  ggplot(turbidityData,aes(x = dateTime)) + 
+    geom_point(data=turbidityData, aes(dateTime,downstream,colour='Downstream Gage')) +
+    geom_line(data=turbidityData,aes(dateTime,turbidity99th2,colour='turbidity99th')) +
+    geom_line(data=turbidityData, aes(dateTime,GH_Inst,colour=paste(updown,' Gage Height',sep="")),linetype=2) +
+    scale_y_continuous(sec.axis = sec_axis(trans=~.+0,name = 'Gage Height (ft)')) +
+    scale_color_manual(values=c('blue','gray','red'))+
+    labs(y="Turbidity (NTU)",x="Date",colour='Parameter')
 }
 
 # Turbidity tweet
-turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1,turbidity99th2,
-                          upstreamDataForTurbidity,downstreamDataForTurbidity){
+turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1,turbidity99th2){
   turbTimeData <- select(gageResults,dateTime,site_no.x,site_no.y,site_noGH,GH_Inst,WQSapplied,turbidity_valid30minuteWindow,
                          turbidity_NAs,turbidity_ExceedanceType,turbidity_Exceedance,
                          turbidity_upstreamExceed99th,turbidity_upstreamNAs,
@@ -748,15 +621,70 @@ turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1
   # Only use data from correct 1hr window
   validData <- filter(turbTimeData,turbidity_valid30minuteWindow==30)
   
+  
+  if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(upstreamData))){
+    UP <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,'Turb_Inst')%>%rename(upstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
+    # If gage height data available at gage then grab that, too
+    if("GH_Inst" %in% names(upstreamData)){
+      if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
+        gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
+          mutate(site_noGH='02054500')%>% dplyr::select(agency_cd,site_noGH,everything(),-site_no)
+      }else{
+        gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
+          rename(site_noGH=!!names(.[2]))}
+      
+    }else{gh <- dplyr::select(upstreamData,agency_cd,dateTime)%>%
+      mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}
+  }else{UP <- select(upstreamData,agency_cd,site_no,dateTime)%>%mutate(upstream=NA)}
+  if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(downstreamData))){
+    DOWN <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,'Turb_Inst')%>%rename(downstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
+    # If gage height data available at gage then grab that, too
+    if("GH_Inst" %in% names(downstreamData)){
+      gh <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,GH_Inst) %>%
+        rename(site_noGH=!!names(.[2]))
+    }else{
+      if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
+        gh <- gh
+      }else{
+        gh <- dplyr::select(downstreamData,agency_cd,dateTime)%>%
+          mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}}
+    
+  }else{DOWN <- select(downstreamData,agency_cd,site_no,dateTime)%>%mutate(downstream=NA)}
+  
+  
+  ## organize Turbidity data for ggplots
+  #if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(upstreamData))){
+  #  UP <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,Turb_Inst)%>%rename(upstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
+  #  # If gage height data available at gage then grab that, too
+  #  if("GH_Inst" %in% names(upstreamData)){
+  #    if(unique(upstreamData$site_no)[!is.na(unique(upstreamData$site_no))]=="0205450393"){
+  #      gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
+  #        mutate(site_noGH='02054500')%>% dplyr::select(agency_cd,site_noGH,everything(),-site_no)
+  #    }else{
+  #      gh <- dplyr::select(upstreamData,agency_cd,site_no,dateTime,GH_Inst)%>%
+  #        rename(site_noGH=!!names(.[2]))}
+  #    
+  #    }else{gh <- dplyr::select(upstreamData,agency_cd,dateTime)%>%
+  #        mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}
+  #}else{UP <- select(upstreamData,agency_cd,site_no,dateTime)%>%mutate(upstream=NA)}
+  #if(unique(c('Turb_Inst',"Turb_Inst_cd") %in% names(downstreamData))){
+  #  DOWN <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,Turb_Inst)%>%rename(downstream=!!names(.[4])) # change parameter to general name to make further manipulations easier
+  #  # If gage height data available at gage then grab that, too
+  #  if("GH_Inst" %in% names(downstreamData)){
+  #    gh <- dplyr::select(downstreamData,agency_cd,site_no,dateTime,GH_Inst) %>%
+  #      rename(site_noGH=!!names(.[2]))
+  #  }else{gh <- dplyr::select(downstreamData,agency_cd,dateTime)%>%
+  #    mutate(site_noGH=NA,GH_Inst=NA)%>%dplyr::select(agency_cd,site_noGH,dateTime,GH_Inst)}
+  #}else{DOWN <- select(downstreamData,agency_cd,site_no,dateTime)%>%mutate(downstream=NA)}
+  together <- full_join(UP,DOWN,by=c('agency_cd','dateTime'))%>%
+    full_join(gh,by=c('agency_cd','dateTime')) %>%
+    mutate(turbidity99th1=turbidity99th1,turbidity99th2=turbidity99th2)
+  
+  
   # upstream downstream change comparison
   if(nrow(validData)>0){
     validComparison <- filter(validData,turbidity_Exceedance>0, # Limit dataset to only violations
                               turbidity_NAs <= 3) # Only allow up to 3 missing turbidity reading per hour for any hour to count toward max change rate violation
-    
-    # Data manipulation for plots
-    together <- dataManipulationForTurbTweets_2hr(upstreamData,downstreamData,turbidity99th1,turbidity99th2)
-    together2days <- dataManipulationForTurbTweets_2days(upstreamDataForTurbidity,downstreamDataForTurbidity,turbidity99th1,turbidity99th2)
-    
     if(nrow(validComparison)>0){
       uniqueTweetIdentifier <- format(as.numeric(Sys.time()),nsmall=4) # Tweet function will not work if the status is the same as a previous status
       PCcolName <- 'turbidity_upstreamDownstreamDataReview'
@@ -769,7 +697,7 @@ turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1
                        '&cb_63680=on&site_no=',gageNumber1,'%2C',gageNumber2,'&format=gif_mult_sites',sep='')
       file_name <- paste('notifications/images/',uniqueTweetIdentifier,'.jpg',sep='')
       jpeg(file_name)
-      print(pairedTurbidityPlot_2days(together2days,turbidity99th1,turbidity99th2))
+      print(pairedTurbidityPlot(together))
       dev.off()
       
       tweet(paste(streamName,PCcolName,weblink,'UID:',uniqueTweetIdentifier,sep=" "),bypassCharLimit=T,
@@ -793,7 +721,7 @@ turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1
                        '&cb_63680=on&site_no=',gageNumber,sep = "")
       file_name <- paste('notifications/images/',uniqueTweetIdentifier,'.jpg',sep='')
       jpeg(file_name)
-      print(upstreamTurbidityPlot2day(together2days,turbidity99th1))
+      print(upstreamTurbidityPlot(together))
       dev.off()
       tweet(paste(streamName,PCcolName,weblink,'UID:',uniqueTweetIdentifier,sep=" "),bypassCharLimit=T,
             mediaPath=paste('notifications/images/',uniqueTweetIdentifier,'.jpg',sep=''))
@@ -818,7 +746,7 @@ turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1
                        '&cb_63680=on&site_no=',gageNumber,sep = "")
       file_name <- paste('notifications/images/',uniqueTweetIdentifier,'.jpg',sep='')
       jpeg(file_name)
-      print(downstreamTurbidityPlot2day(together2days,turbidity99th2))
+      print(downstreamTurbidityPlot(together))
       dev.off()
       tweet(paste(streamName,PCcolName,weblink,'UID:',uniqueTweetIdentifier,sep=" "),bypassCharLimit=T,
             mediaPath=paste('notifications/images/',uniqueTweetIdentifier,'.jpg',sep=''))
@@ -829,7 +757,6 @@ turbTimeTweet <- function(gageResults,upstreamData,downstreamData,turbidity99th1
       write.csv(datToSave,paste('notifications/',uniqueTweetIdentifier,'.csv',sep=""),row.names = F)}
   }
 }
-
 
 
 
